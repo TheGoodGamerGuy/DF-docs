@@ -2,6 +2,12 @@
 - [Installation](#installation)
 	- [DigitalOcean](#digitalocean)
 	- [Docker Stack](#docker-stack)
+- [Setup](#setup)
+  - [Grafana](#grafana)
+    - [Add Data Sources](#add-data-sources)
+    - [InfluxDB](#influxdb)
+    - [Loki](#loki)
+    - [Prometheus](#prometheus)
 
 # Installation
 ## DigitalOcean:
@@ -33,7 +39,7 @@ sudo docker run hello-world
 ```
 
 ## Docker Stack
-### docker-compose.yml
+### Main docker-compose.yml
 ```yml
 services:
   # ---------------------------------------------------------------
@@ -88,23 +94,24 @@ services:
       retries: 3
       start_period: 30s
 
-  # ---------------------------------------------------------------
-  # Grafana service
-  # ---------------------------------------------------------------
+  ################################################
+  # Grafana
+  ################################################
   grafana:
     container_name: grafana
     image: grafana/grafana:latest
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      - TZ=Etc/UTC                  # Set the timezone
-      - GF_PATHS_DATA=/var/lib/grafana  # Where Grafana stores data
-      - GF_PATHS_LOGS=/var/log/grafana  # Where Grafana stores logs
+      - TZ=Etc/UTC
+      - GF_PATHS_DATA=/var/lib/grafana
+      - GF_PATHS_LOGS=/var/log/grafana
     ports:
-      - "3000:3000"                 # Expose Grafana's web UI on port 3000
+      - "3000:3000"
     volumes:
-      - ./volumes/grafana/data:/var/lib/grafana  # Persist Grafana data
-      - ./volumes/grafana/log:/var/log/grafana   # Persist Grafana logs
+      - grafana-data:/var/lib/grafana
+      - grafana-log:/var/log/grafana
     healthcheck:
-      # Attempt a simple download from Grafana to confirm it’s responding
       test: ["CMD", "wget", "-O", "/dev/null", "http://localhost:3000"]
       interval: 30s
       timeout: 10s
@@ -114,26 +121,21 @@ services:
     networks:
       - monitoring
 
-  # ---------------------------------------------------------------
-  # Mosquitto (MQTT broker)
-  # ---------------------------------------------------------------
+  ################################################
+  # Mosquitto
+  ################################################
   mosquitto:
     container_name: mosquitto
-    build:
-      context: ./.templates/mosquitto/.  
-      # Docker build context located in the local ./.templates/mosquitto directory
-      args:
-        - MOSQUITTO_BASE=eclipse-mosquitto:latest  
-          # Base image for building the Mosquitto container
+    image: eclipse-mosquitto:latest
     environment:
-      - TZ=${TZ:-Etc/UTC}           # Set timezone, default is UTC
+      - TZ=${TZ:-Etc/UTC}
+    # Expose the MQTT port
     ports:
-      - "1883:1883"                 # Mosquitto MQTT default port
+      - "1883:1883"
+    # Use named volumes for data and logs, no config override
     volumes:
-      - ./volumes/mosquitto/config:/mosquitto/config  # Config directory
-      - ./volumes/mosquitto/data:/mosquitto/data      # Data directory
-      - ./volumes/mosquitto/log:/mosquitto/log        # Log directory
-      - ./volumes/mosquitto/pwfile:/mosquitto/pwfile  # Password file
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
     restart: unless-stopped
     networks:
       - monitoring
@@ -162,7 +164,10 @@ services:
 # ---------------------------------------------------------------
 volumes:
   influxdb-storage:
-    # Used by InfluxDB to persist data across container restarts
+  grafana-data:
+  grafana-log:
+  mosquitto-data:
+  mosquitto-log:
 
 # ---------------------------------------------------------------
 # Docker network
@@ -172,8 +177,115 @@ networks:
     driver: bridge  # Use a user-defined bridged network for all services
 
 ```
+### Monitoring docker-compose.yml
+```yml
+services:
+  # ---------------------------------------------------------------
+  # cAdvisor - Analyzes and exposes resource usage and performance data 
+  # from running containers
+  # ---------------------------------------------------------------
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest   # Official cAdvisor image
+    container_name: cadvisor                 # Name the container "cadvisor"
+    restart: unless-stopped                  # Auto-restart unless manually stopped
+    ports:
+      - "8080:8080"                          # Expose cAdvisor UI on host port 8080
+    privileged: true                         # Gives cAdvisor ability to read all cgroup data
+    volumes:
+      - /:/rootfs:ro                         # Mount the root filesystem as read-only
+      - /sys:/sys:ro                         # Mount /sys directory, read-only for cgroup data
+      - /var/lib/docker:/var/lib/docker:ro   # Read-only access to Docker data
+      - /var/run/docker.sock:/var/run/docker.sock:ro  
+        # Read-only access to Docker socket, allows cAdvisor to monitor containers
+
+  # ---------------------------------------------------------------
+  # Prometheus - Collects metrics from cAdvisor and other endpoints
+  # ---------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest            # Official Prometheus image
+    container_name: prometheus               # Name the container "prometheus"
+    restart: unless-stopped                  # Auto-restart unless manually stopped
+    ports:
+      - "9090:9090"                          # Prometheus accessible on host port 9090
+    volumes:
+      - /opt/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro  
+        # Mount the Prometheus config file from host into the container (read-only)
+
+  # ---------------------------------------------------------------
+  # Loki - A log aggregation system from Grafana
+  # ---------------------------------------------------------------
+  loki:
+    image: grafana/loki:latest               # Official Loki image
+    container_name: loki                     # Name the container "loki"
+    restart: unless-stopped                  # Auto-restart unless manually stopped
+    ports:
+      - "3100:3100"                          # Loki API/UI accessible on host port 3100
+    command: -config.file=/etc/loki/local-config.yaml  
+      # Use the provided configuration file for Loki
+    volumes:
+      - loki_data:/loki                      # Named volume for storing Loki data
+      - /opt/loki/loki-config.yaml:/etc/loki/local-config.yaml:ro  
+        # Read-only mount of Loki’s config from the host
+
+  # ---------------------------------------------------------------
+  # Promtail - Agent that collects logs and sends them to Loki
+  # ---------------------------------------------------------------
+  promtail:
+    image: grafana/promtail:latest           # Official Promtail image
+    container_name: promtail                 # Name the container "promtail"
+    restart: unless-stopped                  # Auto-restart unless manually stopped
+    volumes:
+      - /var/log:/var/log:ro                 # Read-only mount of system logs
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro  
+        # Access container logs (if file-based scraping is still desired)
+      - /etc/promtail:/etc/promtail:ro       # Mount Promtail config directory (read-only)
+      - /tmp:/tmp                            # Used for storing Promtail's positions and temp data
+      - /var/run/docker.sock:/var/run/docker.sock:ro  
+        # Read-only access to Docker socket for Docker service discovery
+    command: -config.file=/etc/promtail/promtail-config.yaml
+      # Load the configuration file for Promtail
+
+# ---------------------------------------------------------------
+# Named volumes for persistent data storage
+# ---------------------------------------------------------------
+volumes:
+  loki_data:
+    # Data volume used by Loki to store logs
+```
 
 ### Launch docker stack
 ```bash
 docker-compose up -d 
 ```
+
+
+# Setup
+## Grafana
+### Add Data Sources
+![image](https://github.com/user-attachments/assets/21aa52d6-b549-4f3b-ad50-8b0a2394a037)
+
+### Influxdb
+Choose flux language
+URL
+```
+http://host.docker.internal:8086
+```
+Set Organization, Token and default bucket
+![image](https://github.com/user-attachments/assets/799c2df8-4fc6-43e8-a4df-184814d864bf)
+
+### Loki
+Make sure to use the provided configuration file when setting up Loki
+URL
+```
+http://host.docker.internal:3100
+```
+![image](https://github.com/user-attachments/assets/4d08cc46-38c7-41ed-9c90-e2c33d1184a3)
+
+
+### Prometheus
+URL
+```
+http://host.docker.internal:9090
+```
+![image](https://github.com/user-attachments/assets/8671255c-99a4-4d2a-9ee7-f80ae3b94784)
+
