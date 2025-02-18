@@ -3,6 +3,7 @@
 	- [DigitalOcean](#digitalocean)
 	- [Docker Stack](#docker-stack)
 - [Setup](#setup)
+  - [InfluxDB](#influxdb)
   - [Grafana](#grafana)
     - [Add Data Sources](#add-data-sources)
     - [InfluxDB](#influxdb)
