@@ -262,7 +262,7 @@ docker-compose up -d
 # Setup
 ## InfluxDB
 ### Environment variables
-## Change the following values in the environment variables:
+### **Change the following values in the environment variables:**
 Set username and password
 Generate admin Token through linux cli
 ```bash
