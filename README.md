@@ -1,14 +1,23 @@
 # DF-docs
 - [Installation](#installation)
-	- [DigitalOcean](#digitalocean)
-	- [Docker Stack](#docker-stack)
+  - [DigitalOcean](#digitalocean)
+    - [Docker installation](#docker-installation)
+  - [Docker Stack](#docker-stack)
+    - [Main docker-compose.yml](#main-docker-composeyml)
+    - [Monitoring docker-compose.yml](#monitoring-docker-composeyml)
+    - [Launch docker stack](#launch-docker-stack)
 - [Setup](#setup)
   - [InfluxDB](#influxdb)
+    - [Environment variables](#environment-variables)
+    - [Change the following values in the environment variables](#change-the-following-values-in-the-environment-variables)
+  - [Telegraf](#telegraf)
+    - [Telegraf config](#telegraf-config)
   - [Grafana](#grafana)
     - [Add Data Sources](#add-data-sources)
-    - [InfluxDB](#influxdb)
-    - [Loki](#loki)
-    - [Prometheus](#prometheus)
+    - [InfluxDB source](#influxdb-source)
+    - [Loki source](#loki-source)
+    - [Prometheus source](#prometheus-source)
+
 
 # Installation
 ## DigitalOcean:
