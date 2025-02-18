@@ -261,7 +261,8 @@ docker-compose up -d
 
 # Setup
 ## InfluxDB
-### Change the following values in the environment variables:
+### Environment variables
+## Change the following values in the environment variables:
 Set username and password
 Generate admin Token through linux cli
 ```bash
@@ -301,8 +302,76 @@ DOCKER_INFLUXDB_INIT_HOST=influxdb
 # Will be mounted to container and used as telegraf configuration
 TELEGRAF_CFG_PATH=./telegraf/telegraf.conf
 ```
+### The fo
+
+
+## Telegraf
+
+telegraf docker compose:
+```yml
+  telegraf:
+    container_name: telegraf
+    image: telegraf:latest
+    env_file:
+      - .env                        # Load environment variables from the .env file
+    environment:
+      - INFLUX_TOKEN=${INFLUX_TOKEN}  # Pass the InfluxDB token into the container
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro  # Mount telegraf.conf (read-only)
+    command: telegraf --config /etc/telegraf/telegraf.conf  
+      # Override the default command to point to the config file
+    depends_on:
+      - influxdb                    # Ensure InfluxDB is started before Telegraf
+    restart: unless-stopped
+    networks:
+      - monitoring
+    healthcheck:
+      # Simple check to confirm the Telegraf process is running
+      test: ["CMD", "pgrep", "telegraf"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+```
+
+The Telegraf config contains outputs for InfluxDB :
+	url, token, organization and primary bucket, which are pulled from the environment variables
+It also has some basic server monitoring data inputs
+### Telegraf config
+```config
+[global_tags]
+[agent]
+  interval = "10s"
+  round_interval = true
+  metric_batch_size = 1000
+  metric_buffer_limit = 10000
+  collection_jitter = "0s"
+  flush_interval = "10s"
+  flush_jitter = "0s"
+  precision = ""
+  hostname = ""
+  omit_hostname = false
+[[outputs.influxdb_v2]]
+  urls = ["http://${DOCKER_INFLUXDB_INIT_HOST}:8086"]
+  token = "$DOCKER_INFLUXDB_INIT_ADMIN_TOKEN"
+  organization = "$DOCKER_INFLUXDB_INIT_ORG"
+  bucket = "$DOCKER_INFLUXDB_INIT_BUCKET"
+  insecure_skip_verify = false
+[[inputs.cpu]]
+  percpu = true
+  totalcpu = true
+  collect_cpu_time = false
+  report_active = false
+[[inputs.disk]]
+  ignore_fs = ["tmpfs", "devtmpfs", "devfs", "iso9660", "overlay", "aufs", "squashfs"]
+```
+
 
 ## Grafana
+- [Add Data Sources](#add-data-sources)
+- [InfluxDB source](#influxdb-source)
+- [Loki source](#loki-source)
+- [Prometheus source](#prometheus-source)
 ### Add Data Sources
 ![image](https://github.com/user-attachments/assets/21aa52d6-b549-4f3b-ad50-8b0a2394a037)
 
