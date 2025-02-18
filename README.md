@@ -13,7 +13,7 @@
 ## DigitalOcean:
 Use Ubuntu 22-04
 
-### Docker
+### Docker installation
 ```bash
 # Add Docker's official GPG key:
 sudo apt-get update
@@ -55,7 +55,7 @@ services:
       - ./entrypoint.sh:/entrypoint.sh:ro     # Mount custom entrypoint script (read-only)
     entrypoint: ["/entrypoint.sh"]  # Use our script as the container entrypoint
     ports:
-      - "${DOCKER_INFLUXDB_INIT_PORT}:8086"   # Map host port to container port 8086
+      - "8086:8086"   # Map host port to container port 8086
     restart: unless-stopped         # Automatically restart unless manually stopped
     networks:
       - monitoring                  # Attach the container to the "monitoring" network
@@ -175,7 +175,6 @@ volumes:
 networks:
   monitoring:
     driver: bridge  # Use a user-defined bridged network for all services
-
 ```
 ### Monitoring docker-compose.yml
 ```yml
@@ -260,11 +259,53 @@ docker-compose up -d
 
 
 # Setup
+## InfluxDB
+### Change the following values in the environment variables:
+Set username and password
+Generate admin Token through linux cli
+```bash
+openssl rand -hex 32
+```
+Set primary organization and bucket
+
+```env
+DOCKER_INFLUXDB_INIT_MODE=setup
+
+## Environment variables used during the setup and operation of the stack
+#
+
+# Primary InfluxDB admin/superuser credentials
+#
+DOCKER_INFLUXDB_INIT_USERNAME=changeme
+DOCKER_INFLUXDB_INIT_PASSWORD=changeme 
+DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=changeme 
+
+# Primary InfluxDB organization & bucket definitions
+# 
+DOCKER_INFLUXDB_INIT_ORG=changeme 
+DOCKER_INFLUXDB_INIT_BUCKET=changeme 
+
+# Primary InfluxDB bucket retention period
+#
+# NOTE: Valid units are nanoseconds (ns), microseconds(us), milliseconds (ms)
+# seconds (s), minutes (m), hours (h), days (d), and weeks (w).
+DOCKER_INFLUXDB_INIT_RETENTION=0s
+# 0s means forever
+
+# InfluxDB hostname definition
+DOCKER_INFLUXDB_INIT_HOST=influxdb 
+
+# Telegraf configuration file
+# 
+# Will be mounted to container and used as telegraf configuration
+TELEGRAF_CFG_PATH=./telegraf/telegraf.conf
+```
+
 ## Grafana
 ### Add Data Sources
 ![image](https://github.com/user-attachments/assets/21aa52d6-b549-4f3b-ad50-8b0a2394a037)
 
-### Influxdb
+### Influxdb source
 Choose flux language
 URL
 ```
@@ -273,7 +314,7 @@ http://host.docker.internal:8086
 Set Organization, Token and default bucket
 ![image](https://github.com/user-attachments/assets/799c2df8-4fc6-43e8-a4df-184814d864bf)
 
-### Loki
+### Loki source
 Make sure to use the provided configuration file when setting up Loki
 URL
 ```
@@ -282,10 +323,12 @@ http://host.docker.internal:3100
 ![image](https://github.com/user-attachments/assets/4d08cc46-38c7-41ed-9c90-e2c33d1184a3)
 
 
-### Prometheus
+### Prometheus source
 URL
 ```
 http://host.docker.internal:9090
 ```
 ![image](https://github.com/user-attachments/assets/8671255c-99a4-4d2a-9ee7-f80ae3b94784)
+
+## Monitoring
 
