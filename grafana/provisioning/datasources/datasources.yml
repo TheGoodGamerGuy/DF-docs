@@ -1,0 +1,91 @@
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB
+    type: influxdb
+    access: proxy
+    url: http://host.docker.internal:8086
+    jsonData:
+      version: Flux              # Use Flux query language (InfluxDB v2)
+      organization: DataForge    # InfluxDB organization
+      defaultBucket: telegraf    # InfluxDB bucket
+    secureJsonData:
+      token: yOl7kmxaWfcBQnuHa6QcLGzuaaplN34OCk3FGmR4-0nDG9MtM25Rmgi_-AoLxAjbNEVq4zHU1A_CYyp45DjU1g==
+
+  - name: Loki
+    type: loki
+    access: proxy
+    url: http://host.docker.internal:3100
+    jsonData:
+      maxLines: 1000   # max lines to return (default 1000)
+      timeout: 60      # query timeout in seconds (default 60)
+
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://host.docker.internal:9090
+    isDefault: true
+
+
+
+
+# apiVersion: 1
+
+# datasources:
+#   # ------------------------------------------------------------
+#   # Prometheus datasource
+#   # ------------------------------------------------------------
+#   - name: Prometheus
+#     type: prometheus
+#     uid: prometheus
+#     orgId: 1
+#     url: http://host.docker.internal:9090  # or ${PROMETHEUS_URL}
+#     access: proxy
+#     isDefault: true
+#     version: 1
+#     editable: true
+#     # jsonData, secureJsonData, etc. can be expanded as needed
+
+#   # ------------------------------------------------------------
+#   # Loki datasource
+#   # ------------------------------------------------------------
+#   - name: loki
+#     type: loki
+#     uid: loki
+#     orgId: 1
+#     url: http://host.docker.internal:3100  # or ${LOKI_URL}
+#     access: proxy
+#     isDefault: false
+#     version: 1
+#     editable: true
+
+#   # ------------------------------------------------------------
+#   # InfluxDB v2 datasource (Flux)
+#   # ------------------------------------------------------------
+#   - name: influxdb
+#     type: influxdb
+#     uid: influxdb
+#     orgId: 1
+#     url: http://host.docker.internal:8086  # or ${INFLUXDB_URL}
+#     access: proxy
+#     isDefault: false
+#     version: 1
+#     editable: true
+
+#     # Influx v2/Flux–specific settings
+#     jsonData:
+#       # “Flux” signals we are using the newer InfluxDB v2 / Flux engine
+#       version: Flux
+
+
+#       # organization: ${INFLUXDB_ORG}
+#       # defaultBucket: ${INFLUXDB_BUCKET}
+#       organization: "DataForge"
+#       defaultBucket: "mqtt"
+      
+#       minTimeInterval: "10s"
+#       maxSeries: 1000
+
+#     secureJsonData:
+#       # You can also do ${INFLUXDB_TOKEN} to pull from env var
+#       token: "configured"

@@ -1,0 +1,72 @@
+services:
+  # ---------------------------------------------------------------
+  # cAdvisor - Analyzes and exposes resource usage and performance data 
+  # from running containers
+  # ---------------------------------------------------------------
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest   # Official cAdvisor image
+    container_name: cadvisor                 # Name the container "cadvisor"
+    restart: unless-stopped                  # Auto-restart unless manually stopped
+    ports:
+      - "8080:8080"                          # Expose cAdvisor UI on host port 8080
+    privileged: true                         # Gives cAdvisor ability to read all cgroup data
+    volumes:
+      - /:/rootfs:ro                         # Mount the root filesystem as read-only
+      - /sys:/sys:ro                         # Mount /sys directory, read-only for cgroup data
+      - /var/lib/docker:/var/lib/docker:ro   # Read-only access to Docker data
+      - /var/run/docker.sock:/var/run/docker.sock:ro  
+        # Read-only access to Docker socket, allows cAdvisor to monitor containers
+
+  # ---------------------------------------------------------------
+  # Prometheus - Collects metrics from cAdvisor and other endpoints
+  # ---------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:latest            # Official Prometheus image
+    container_name: prometheus               # Name the container "prometheus"
+    restart: unless-stopped                  # Auto-restart unless manually stopped
+    ports:
+      - "9090:9090"                          # Prometheus accessible on host port 9090
+    volumes:
+      - /opt/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro  
+        # Mount the Prometheus config file from host into the container (read-only)
+
+  # ---------------------------------------------------------------
+  # Loki - A log aggregation system from Grafana
+  # ---------------------------------------------------------------
+  loki:
+    image: grafana/loki:latest               # Official Loki image
+    container_name: loki                     # Name the container "loki"
+    restart: unless-stopped                  # Auto-restart unless manually stopped
+    ports:
+      - "3100:3100"                          # Loki API/UI accessible on host port 3100
+    command: -config.file=/etc/loki/local-config.yaml  
+      # Use the provided configuration file for Loki
+    volumes:
+      - loki_data:/loki                      # Named volume for storing Loki data
+      - /opt/loki/loki-config.yaml:/etc/loki/local-config.yaml:ro  
+        # Read-only mount of Loki’s config from the host
+
+  # ---------------------------------------------------------------
+  # Promtail - Agent that collects logs and sends them to Loki
+  # ---------------------------------------------------------------
+  promtail:
+    image: grafana/promtail:latest           # Official Promtail image
+    container_name: promtail                 # Name the container "promtail"
+    restart: unless-stopped                  # Auto-restart unless manually stopped
+    volumes:
+      - /var/log:/var/log:ro                 # Read-only mount of system logs
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro  
+        # Access container logs (if file-based scraping is still desired)
+      - /etc/promtail:/etc/promtail:ro       # Mount Promtail config directory (read-only)
+      - /tmp:/tmp                            # Used for storing Promtail's positions and temp data
+      - /var/run/docker.sock:/var/run/docker.sock:ro  
+        # Read-only access to Docker socket for Docker service discovery
+    command: -config.file=/etc/promtail/promtail-config.yaml
+      # Load the configuration file for Promtail
+
+# ---------------------------------------------------------------
+# Named volumes for persistent data storage
+# ---------------------------------------------------------------
+volumes:
+  loki_data:
+    # Data volume used by Loki to store logs

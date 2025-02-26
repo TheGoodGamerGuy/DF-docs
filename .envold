@@ -1,0 +1,35 @@
+DOCKER_INFLUXDB_INIT_MODE=setup
+
+## Environment variables used during the setup and operation of the stack
+#
+
+# Primary InfluxDB admin/superuser credentials
+#
+DOCKER_INFLUXDB_INIT_USERNAME=Admin
+DOCKER_INFLUXDB_INIT_PASSWORD=1234567890-=
+DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=698a2160b9042affd148c49e7aa81f389b437c1e49865d736ab33ce538d5ff65
+
+# Primary InfluxDB organization & bucket definitions
+# 
+DOCKER_INFLUXDB_INIT_ORG=DataForge
+DOCKER_INFLUXDB_INIT_BUCKET=telegraf
+
+# Primary InfluxDB bucket retention period
+#
+# NOTE: Valid units are nanoseconds (ns), microseconds(us), milliseconds (ms)
+# seconds (s), minutes (m), hours (h), days (d), and weeks (w).
+DOCKER_INFLUXDB_INIT_RETENTION=0s
+
+
+# InfluxDB port & hostname definitions
+#
+DOCKER_INFLUXDB_INIT_PORT=8086 
+DOCKER_INFLUXDB_INIT_HOST=influxdb 
+
+# Telegraf configuration file
+# 
+# Will be mounted to container and used as telegraf configuration
+TELEGRAF_CFG_PATH=./telegraf/telegraf.conf
+
+INFLUX_TOKEN=yOl7kmxaWfcBQnuHa6QcLGzuaaplN34OCk3FGmR4-0nDG9MtM25Rmgi_-AoLxAjbNEVq4zHU1A_CYyp45DjU1g==
+
